@@ -1,0 +1,78 @@
+<h1 id="qiuping-shen-cv">Qiuping Shen -- CV</h1>
+
+<h1 id="updated-procedure-with-preslected-sample-included">Updated Procedure with Preslected Sample included</h1>
+<ul>
+<li><p>Yields for the reweighted sample kl=5.6 have some differences between Alkaid and Mine</p>
+<ul>
+<li>Alkaid: df = pd.read_csv(&#39;preselected_13_11_2022/arrays/hh_bbyy_ggF_kl_5p6.csv&#39;) ==&gt; <font color=red><strong><em>5.1855904940280935</em></strong></font></li>
+<li>Mine: yy = np.sum(np.concatenate([np.load(&#39;../preprocessor/store_npy_condor/preselected_ggfkl5p6_mc16%s.npy&#39;%m) for m in [&#39;a&#39;, &#39;d&#39;, &#39;e&#39;]])[&#39;eventweight&#39;]) ==&gt; <font color=red><strong><em>5.186224164569065</em></strong></font></li>
+</ul>
+</li>
+<li><p>Plot the myy distributions after preselections</p>
+<ul>
+<li>Training Multiclass with four classes: kl=1, kl=0, kl=5.6, k2v=0/3</li>
+</ul>
+</li>
+<li><pre><code class="lang-bash"># make the <span class="hljs-keyword">multiclass </span>training
+<span class="hljs-symbol">python3</span> <span class="hljs-keyword">bbyyoptimization.py </span>-c json/<span class="hljs-keyword">multiclassification/four_multiclass_1116.json </span>-o four_multiclass_1116/<span class="hljs-keyword">multiclass </span>--train --<span class="hljs-keyword">bdtscore
+</span>
+# perform the application of the <span class="hljs-keyword">multiclass
+</span><span class="hljs-symbol">python3</span> <span class="hljs-keyword">bbyyoptimization.py </span>-c json/<span class="hljs-keyword">multiclassification/four_multiclass_1116.json </span>-o four_multiclass_1116/<span class="hljs-keyword">multiclass </span>-m four_multiclass_1116/<span class="hljs-keyword">multiclass/booster_multiclass_20221116.dat </span>--apply -a store_npy_mbdt
+
+# perform the appltication of the <span class="hljs-keyword">multiclass </span>to <span class="hljs-meta">get</span> <span class="hljs-keyword">BDT </span>score
+<span class="hljs-symbol">python3</span> <span class="hljs-keyword">binaryoptimization.py </span>-c json/<span class="hljs-keyword">binaryclassification/devfour_1116/bin_zero.json </span>-o four_multiclass_1116/ -p four_multiclass_1116/<span class="hljs-keyword">multiclass/store_npy_mbdt
+</span>
+# apply the <span class="hljs-keyword">best </span><span class="hljs-keyword">BDT </span>cut value
+<span class="hljs-symbol">python3</span> <span class="hljs-keyword">binaryoptimization.py </span>-c json/<span class="hljs-keyword">binaryclassification/devfour_1116/bin_zero.json </span>-o four_multiclass_1116 --applybdt -t four_multiclass_1116
+</code></pre>
+<p>HERE: need to think more about it, due to lack of training.</p>
+</li>
+</ul>
+<h1 id="updated-procedure-of-training-with-splitted-sets">Updated Procedure of Training with Splitted Sets</h1>
+<ul>
+<li>three sets: train, test and valid used to train the multi-labels model as well as binary models</li>
+<li>Structure data inputs for training:</li>
+</ul>
+<p><img src="/Users/shen/Library/Application Support/typora-user-images/image-20221126092307087.png" alt="image-20221126092307087"></p>
+<ul>
+<li><strong>Multi-labels</strong> training to get model  ==&gt; to label events belonging to which class</li>
+<li>Events split by <strong>eventNumber</strong>: <strong><em>public_train_mbdt =&gt; 2/3</em></strong>, Validation: <strong><em>public_test =&gt; 1</em></strong>, Test: <strong><em>private_test =&gt; 0</em></strong> <ul>
+<li>training use two sets: <strong><em>public_train,</em></strong> <strong><em>public_test</em></strong></li>
+<li>apply the model to validation set of these used signal samples</li>
+</ul>
+</li>
+<li><strong>Binary classification</strong> to get model of each class</li>
+<li>Events split by <strong>eventNumber</strong>: <strong><em>public_train =&gt; 0/1</em></strong>, Validation: <strong><em>public_test =&gt; 2</em></strong>, Test: <strong><em>private_test =&gt; 3</em></strong> <ul>
+<li>training use two sets: <strong><em>public_train,</em></strong> <strong><em>public_test</em></strong></li>
+<li>signal: the events classified to a certain class by multi-label model</li>
+<li>background: all single Higgs, diphoton and ttyy samples (Without the multi-label model applied)</li>
+<li>apply all models to public test set and then perform the event categorization (choose the BDT cuts)</li>
+</ul>
+</li>
+<li><strong>Apply models</strong> of two layer to all samples<ul>
+<li>for each mc compaign of each process, the sample should be slimmed by training variables due to only those variables considered for the models and then perform the predict to save the classlabels as well as single output scores</li>
+</ul>
+</li>
+</ul>
+<ul>
+<li>Training Procedures:</li>
+</ul>
+<pre><code class="lang-bash"><span class="hljs-comment"># training with</span>
+python3 trainingcondor.py -<span class="hljs-keyword">j </span><span class="hljs-keyword">json/trainingjson/xgbtraining_KLK2V.json </span>--layer <span class="hljs-keyword">multiclass
+</span>
+python3 <span class="hljs-keyword">bbyyoptimization.py </span>-<span class="hljs-keyword">j </span><span class="hljs-keyword">json/trainingjson/xgbtraining_SM_BSM.json </span>--train
+python3 <span class="hljs-keyword">bbyyoptimization.py </span>-<span class="hljs-keyword">j </span><span class="hljs-keyword">json/trainingjson/xgbtraining_SM_BSM.json </span>--apply
+python3 <span class="hljs-keyword">bbyyoptimization.py </span>-<span class="hljs-keyword">j </span><span class="hljs-keyword">json/trainingjson/xgbtraining_SM_BSM.json </span>--table  <span class="hljs-comment"># under batch mode due to no pdflatex on condor sever nodes   # one could change parameter `tableall` for all events or datasets</span>
+python3 <span class="hljs-keyword">binaryoptimization.py </span>-<span class="hljs-keyword">j </span><span class="hljs-keyword">json/trainingjson/xgbtraining_SM_BSM.json </span>--train --runclass ggFSM
+python3 <span class="hljs-keyword">binaryoptimization.py </span>-<span class="hljs-keyword">j </span><span class="hljs-keyword">json/trainingjson/xgbtraining_SM_BSM.json </span>--train --runclass VBFSM
+python3 <span class="hljs-keyword">binaryoptimization.py </span>-<span class="hljs-keyword">j </span><span class="hljs-keyword">json/trainingjson/xgbtraining_SM_BSM.json </span>--train --runclass ggFBSM
+python3 <span class="hljs-keyword">binaryoptimization.py </span>-<span class="hljs-keyword">j </span><span class="hljs-keyword">json/trainingjson/xgbtraining_SM_BSM.json </span>--train --runclass VBFBSM
+python3 <span class="hljs-keyword">binaryoptimization.py </span>-<span class="hljs-keyword">j </span><span class="hljs-keyword">json/trainingjson/xgbtraining_SM_BSM.json </span>--apply <span class="hljs-comment"># apply all training, validation and testing sets for categorizarion</span>
+python3 <span class="hljs-keyword">binaryoptimization.py </span>-<span class="hljs-keyword">j </span><span class="hljs-keyword">json/trainingjson/xgbtraining_SM_BSM.json </span>--categorize <span class="hljs-comment"># get the best BDT cuts to all samples</span>
+python3 applymodels.py -<span class="hljs-keyword">j </span><span class="hljs-keyword">json/trainingjson/xgbtraining_SM_BSM.json </span>--apply <span class="hljs-comment"># final application for samples</span>
+python3 applymodels.py -<span class="hljs-keyword">j </span><span class="hljs-keyword">json/trainingjson/xgbtraining_SM_BSM.json </span>--yields <span class="hljs-comment"># create the yields table after event selection</span>
+python3 applymodels.py -<span class="hljs-keyword">j </span><span class="hljs-keyword">json/trainingjson/xgbtraining_SM_BSM.json </span>--datamc <span class="hljs-comment"># preselection and bdtselection</span>
+python3 postanalysis.py -<span class="hljs-keyword">j </span><span class="hljs-keyword">json/analysisjson/yields_collect_SM_BSM.json </span>--condor
+python3 postanalysis.py -<span class="hljs-keyword">j </span><span class="hljs-keyword">json/analysisjson/yields_collect_SM_BSM.json </span>--run2D
+</code></pre>
+<p>- </p>
